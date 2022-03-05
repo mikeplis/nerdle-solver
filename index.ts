@@ -1,11 +1,14 @@
 import * as fs from "fs";
 const prompt = require("prompt-sync")({ sigint: true });
 
-const { totalCharCount, charCountByPosition } = JSON.parse(
-    fs.readFileSync("charCounts.json", { encoding: "utf-8" })
-);
+import { aggregateEquations } from "./countCharacters";
 
-const equations = fs
+const charCounts = JSON.parse(fs.readFileSync("charCounts.json", { encoding: "utf-8" }));
+
+const { totalCharCount: initialTotalCharCount, charCountByPosition: initialCharCountByPosition } =
+    charCounts;
+
+const initialEquations = fs
     .readFileSync("valid_equations.txt", { encoding: "utf-8" })
     .split("\n")
     .slice(0, -1);
@@ -36,14 +39,15 @@ function fitsGuesses(equation: string, guesses: Guesses): boolean {
     return true;
 }
 
-function recommendEquations(guesses: Guesses): string[] {
+function recommendEquations(
+    equations: string[],
+    totalCharCount: any,
+    charCountByPosition: any
+): string[] {
+    console.log(equations.length);
     const equationScores: Record<string, number> = {};
 
-    const filteredEquations = equations.filter((equation) => fitsGuesses(equation, guesses));
-
-    console.log(filteredEquations.length);
-
-    filteredEquations.forEach((equation) => {
+    equations.forEach((equation) => {
         let equationScore = 0;
         for (let i = 0; i < equation.length; i++) {
             const char = equation.charAt(i);
@@ -109,7 +113,13 @@ function main() {
         includes: [],
     };
 
-    console.log(JSON.stringify(recommendEquations(guesses), null, 2));
+    console.log(
+        JSON.stringify(
+            recommendEquations(initialEquations, initialTotalCharCount, initialCharCountByPosition),
+            null,
+            2
+        )
+    );
 
     while (numGuesses < 6) {
         const guess = prompt("What was your guess?: ");
@@ -124,8 +134,16 @@ function main() {
         }
 
         incorporateGuess(guesses, guess, result);
+        const equations = initialEquations.filter((equation) => fitsGuesses(equation, guesses));
+        const { totalCharCount, charCountByPosition } = aggregateEquations(equations);
 
-        console.log(JSON.stringify(recommendEquations(guesses), null, 2));
+        console.log(
+            JSON.stringify(
+                recommendEquations(equations, totalCharCount, charCountByPosition),
+                null,
+                2
+            )
+        );
 
         numGuesses++;
     }
